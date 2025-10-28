@@ -6,24 +6,13 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 
-# ---------------------------
-# Initialize Dash App
-# ---------------------------
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 
-# ---------------------------
-# Function to fetch live prices
-# ---------------------------
 def get_live_data():
     url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,dogecoin&vs_currencies=usd&include_24hr_change=true"
-    data = requests.get(url).json()
-    return data
+    return requests.get(url).json()
 
-
-# ---------------------------
-# App Layout
-# ---------------------------
 app.layout = html.Div(
     style={
         "backgroundColor": "#0e1117",
@@ -33,9 +22,9 @@ app.layout = html.Div(
         "fontFamily": "Segoe UI, sans-serif",
     },
     children=[
-        html.H1("💹 CryptoPulse Tracker", style={"textAlign": "center", "marginBottom": "30px"}),
+        html.H1("💹 CryptoPulse Tracker",
+                style={"textAlign": "center", "marginBottom": "30px"}),
 
-        # Price cards
         html.Div(
             id="price-cards",
             style={
@@ -46,10 +35,10 @@ app.layout = html.Div(
             },
         ),
 
-        # Coin selector + days selector
         html.Div(
             [
-                html.Label("Select cryptocurrency:", style={"fontSize": "18px"}),
+                html.Label("Select cryptocurrency:",
+                           style={"fontSize": "18px"}),
                 dcc.Dropdown(
                     id="crypto-dropdown",
                     options=[
@@ -60,7 +49,8 @@ app.layout = html.Div(
                     value="bitcoin",
                     style={"color": "black", "marginBottom": "10px"},
                 ),
-                html.Label("Select time range:", style={"fontSize": "18px"}),
+                html.Label("Select time range:",
+                           style={"fontSize": "18px"}),
                 dcc.Dropdown(
                     id="days-dropdown",
                     options=[
@@ -80,11 +70,6 @@ app.layout = html.Div(
     ],
 )
 
-# ---------------------------
-# Callbacks
-# ---------------------------
-
-# Update price cards
 @app.callback(
     Output("price-cards", "children"),
     Input("update-interval", "n_intervals")
@@ -104,23 +89,25 @@ def update_cards(n):
                     "borderRadius": "12px",
                     "padding": "20px",
                     "textAlign": "center",
-                    "boxShadow": "0 0 10px rgba(0,0,0,0.5)",
-                    "transition": "all 0.3s ease",
+                    "boxShadow": "0 0 10px rgba(0,0,0,0.6)",
                 },
                 children=[
                     html.H3(coin.capitalize(), style={"marginBottom": "10px"}),
-                    html.H2(f"${price:,.2f}", style={"color": "white", "marginBottom": "5px"}),
-                    html.P(f"{change:.2f}% (24h)", style={"color": color, "fontSize": "18px"}),
+                    html.H2(f"${price:,.2f}",
+                            style={"color": "white", "marginBottom": "5px"}),
+                    html.P(f"{change:.2f}% (24h)",
+                           style={"color": color, "fontSize": "18px"}),
                 ],
             )
         )
     return cards
 
 
-# Update graph with datewise data
 @app.callback(
     Output("price-chart", "figure"),
-    [Input("crypto-dropdown", "value"), Input("days-dropdown", "value"), Input("update-interval", "n_intervals")]
+    [Input("crypto-dropdown", "value"),
+     Input("days-dropdown", "value"),
+     Input("update-interval", "n_intervals")]
 )
 def update_graph(selected_crypto, selected_days, n):
     url = f"https://api.coingecko.com/api/v3/coins/{selected_crypto}/market_chart?vs_currency=usd&days={selected_days}&interval=daily"
@@ -134,7 +121,7 @@ def update_graph(selected_crypto, selected_days, n):
         x=df["date"], y=df["price"],
         mode="lines+markers",
         line=dict(color="#00cc96", width=3),
-        marker=dict(size=6),
+        marker=dict(size=5),
         name=selected_crypto.capitalize()
     ))
 
@@ -152,9 +139,5 @@ def update_graph(selected_crypto, selected_days, n):
 
     return fig
 
-
-# ---------------------------
-# Run App
-# ---------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False, host="0.0.0.0", port=8080)
