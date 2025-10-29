@@ -5,13 +5,22 @@ import requests
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
+import dash_bootstrap_components as dbc
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+# Initialize app with dark theme + mobile responsiveness
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.DARKLY],
+    suppress_callback_exceptions=True,
+    meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}]
+)
 server = app.server
+
 
 def get_live_data():
     url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,dogecoin&vs_currencies=usd&include_24hr_change=true"
     return requests.get(url).json()
+
 
 app.layout = html.Div(
     style={
@@ -20,10 +29,14 @@ app.layout = html.Div(
         "padding": "20px",
         "color": "white",
         "fontFamily": "Segoe UI, sans-serif",
+        "overflowX": "hidden",
+        "overflowY": "auto",
     },
     children=[
-        html.H1("💹 CryptoPulse Tracker",
-                style={"textAlign": "center", "marginBottom": "30px"}),
+        html.H1(
+            "💹 CryptoPulse Tracker",
+            style={"textAlign": "center", "marginBottom": "30px", "color": "white"},
+        ),
 
         html.Div(
             id="price-cards",
@@ -37,8 +50,7 @@ app.layout = html.Div(
 
         html.Div(
             [
-                html.Label("Select cryptocurrency:",
-                           style={"fontSize": "18px"}),
+                html.Label("Select cryptocurrency:", style={"fontSize": "18px", "color": "white"}),
                 dcc.Dropdown(
                     id="crypto-dropdown",
                     options=[
@@ -49,8 +61,7 @@ app.layout = html.Div(
                     value="bitcoin",
                     style={"color": "black", "marginBottom": "10px"},
                 ),
-                html.Label("Select time range:",
-                           style={"fontSize": "18px"}),
+                html.Label("Select time range:", style={"fontSize": "18px", "color": "white"}),
                 dcc.Dropdown(
                     id="days-dropdown",
                     options=[
@@ -69,6 +80,7 @@ app.layout = html.Div(
         dcc.Interval(id="update-interval", interval=60 * 1000, n_intervals=0),
     ],
 )
+
 
 @app.callback(
     Output("price-cards", "children"),
@@ -92,7 +104,7 @@ def update_cards(n):
                     "boxShadow": "0 0 10px rgba(0,0,0,0.6)",
                 },
                 children=[
-                    html.H3(coin.capitalize(), style={"marginBottom": "10px"}),
+                    html.H3(coin.capitalize(), style={"marginBottom": "10px", "color": "white"}),
                     html.H2(f"${price:,.2f}",
                             style={"color": "white", "marginBottom": "5px"}),
                     html.P(f"{change:.2f}% (24h)",
@@ -138,6 +150,7 @@ def update_graph(selected_crypto, selected_days, n):
     )
 
     return fig
+
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=8080)
