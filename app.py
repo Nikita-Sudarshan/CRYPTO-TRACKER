@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import dash_bootstrap_components as dbc
 
-# Initialize app with dark theme + mobile responsiveness
+# Initialize app
 app = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.DARKLY],
@@ -16,12 +16,23 @@ app = dash.Dash(
 )
 server = app.server
 
-
+# Function to get live crypto prices
 def get_live_data():
-    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,dogecoin&vs_currencies=usd&include_24hr_change=true"
-    return requests.get(url).json()
+    url = "https://api.coingecko.com/api/v3/simple/price"
+    params = {
+        "ids": "bitcoin,ethereum,dogecoin",
+        "vs_currencies": "usd",
+        "include_24hr_change": "true"
+    }
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print("⚠️ Error fetching data:", e)
+        return {}
 
-
+# Layout
 app.layout = html.Div(
     style={
         "backgroundColor": "#0e1117",
@@ -29,8 +40,6 @@ app.layout = html.Div(
         "padding": "20px",
         "color": "white",
         "fontFamily": "Segoe UI, sans-serif",
-        "overflowX": "hidden",
-        "overflowY": "auto",
     },
     children=[
         html.H1(
@@ -81,13 +90,16 @@ app.layout = html.Div(
     ],
 )
 
-
+# Price cards
 @app.callback(
     Output("price-cards", "children"),
     Input("update-interval", "n_intervals")
 )
 def update_cards(n):
     data = get_live_data()
+    if not data:
+        return [html.P("⚠️ Unable to fetch data right now.", style={"color": "red"})]
+
     cards = []
     for coin, info in data.items():
         price = info["usd"]
@@ -105,16 +117,14 @@ def update_cards(n):
                 },
                 children=[
                     html.H3(coin.capitalize(), style={"marginBottom": "10px", "color": "white"}),
-                    html.H2(f"${price:,.2f}",
-                            style={"color": "white", "marginBottom": "5px"}),
-                    html.P(f"{change:.2f}% (24h)",
-                           style={"color": color, "fontSize": "18px"}),
+                    html.H2(f"${price:,.2f}", style={"color": "white", "marginBottom": "5px"}),
+                    html.P(f"{change:.2f}% (24h)", style={"color": color, "fontSize": "18px"}),
                 ],
             )
         )
     return cards
 
-
+# Graph
 @app.callback(
     Output("price-chart", "figure"),
     [Input("crypto-dropdown", "value"),
@@ -122,35 +132,39 @@ def update_cards(n):
      Input("update-interval", "n_intervals")]
 )
 def update_graph(selected_crypto, selected_days, n):
-    url = f"https://api.coingecko.com/api/v3/coins/{selected_crypto}/market_chart?vs_currency=usd&days={selected_days}&interval=daily"
-    data = requests.get(url).json()
+    url = f"https://api.coingecko.com/api/v3/coins/{selected_crypto}/market_chart"
+    params = {"vs_currency": "usd", "days": selected_days, "interval": "daily"}
 
-    df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
-    df["date"] = pd.to_datetime(df["timestamp"], unit="ms")
+    try:
+        data = requests.get(url, params=params, timeout=10).json()
+        df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
+        df["date"] = pd.to_datetime(df["timestamp"], unit="ms")
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df["date"], y=df["price"],
-        mode="lines+markers",
-        line=dict(color="#00cc96", width=3),
-        marker=dict(size=5),
-        name=selected_crypto.capitalize()
-    ))
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df["date"], y=df["price"],
+            mode="lines+markers",
+            line=dict(color="#00cc96", width=3),
+            marker=dict(size=5),
+            name=selected_crypto.capitalize()
+        ))
 
-    fig.update_layout(
-        title=f"{selected_crypto.capitalize()} Price Trend (Last {selected_days} Days)",
-        template="plotly_dark",
-        margin=dict(l=20, r=20, t=60, b=40),
-        xaxis_title="Date",
-        yaxis_title="Price (USD)",
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#0e1117",
-        font=dict(color="white", size=14),
-        hovermode="x unified",
-    )
+        fig.update_layout(
+            title=f"{selected_crypto.capitalize()} Price Trend (Last {selected_days} Days)",
+            template="plotly_dark",
+            margin=dict(l=20, r=20, t=60, b=40),
+            xaxis_title="Date",
+            yaxis_title="Price (USD)",
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font=dict(color="white", size=14),
+            hovermode="x unified",
+        )
+        return fig
 
-    return fig
-
+    except Exception as e:
+        print("⚠️ Graph error:", e)
+        return go.Figure()
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=8080)
